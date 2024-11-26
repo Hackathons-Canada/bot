@@ -25,7 +25,7 @@ export async function execute(interaction: CommandInteraction) {
   const channelName = `${title}-${date}`.toLowerCase().replace(/\s+/g, "-"); // Sanitize channel name
 
   try {
-    // Create the channel in the guild
+    // Create the channel
     const newChannel = await interaction.guild.channels.create({
       name: channelName,
       type: 0, // '0' corresponds to a text channel
@@ -34,10 +34,22 @@ export async function execute(interaction: CommandInteraction) {
     if (newChannel instanceof TextChannel) {
       await newChannel.send(`${link}`);
     }
-    await interaction.reply(`Channel "${channelName}" created! Link sent in the channel.`);
+    // Hardcode time to midnight
+    const eventDate = new Date(date);
+    eventDate.setHours(0, 0, 0, 0); // Set to midnight
+    // Create new event
+    const scheduledEvent = await interaction.guild.scheduledEvents.create({
+        name: title, 
+        scheduledStartTime: eventDate, 
+        scheduledEndTime: new Date(eventDate.getTime() + 60 * 60 * 1000), // Hardcode 1 hr as end date (will be fixded)
+        privacyLevel: 2, // "GUILD_ONLY"
+        entityType: 3, // "EXTERNAL"
+        entityMetadata: { location: link }, 
+        description: `Details: ${link}`, 
+    });
   } 
   catch (error) {
-    console.error("Error creating channel:", error);
-    await interaction.reply("An error occurred while creating the channel.");
+    console.error("Error:", error);
+    await interaction.reply("An error occurred.");
   }
 }
