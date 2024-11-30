@@ -1,10 +1,11 @@
-import { Client as DiscordClient, ButtonBuilder, ButtonStyle, ActionRowBuilder, TextChannel, Guild } from "discord.js";
+import { Client as DiscordClient, ButtonBuilder, ButtonStyle, ActionRowBuilder, TextChannel, Guild, Collection } from "discord.js";
 import { config } from "./config";
 import { deployCommands } from "./deploy-commands";
 import { Client } from "pg";
 import { createChannelAndEvent } from "./commands/add";
 import dotenv from "dotenv";
 import { channel } from "diagnostics_channel";
+import { commands, Command } from "./commands";
 
 dotenv.config();
 
@@ -48,7 +49,7 @@ dbClient.on("notification", async (msg: any) => {
       .setLabel('Add Event')
       .setStyle(ButtonStyle.Danger);
 
-    const row = new ActionRowBuilder()
+    const row = new ActionRowBuilder<ButtonBuilder>()
 			.addComponents(confirm);
 
     await notificationChannel.send({
@@ -62,8 +63,28 @@ dbClient.on("notification", async (msg: any) => {
   }
 });
 
+const commandCollection = new Collection<string, Command>();
+for (const [name, command] of Object.entries(commands)) {
+  commandCollection.set(name, command);
+}
+
 discordClient.on("interactionCreate", async (interaction) => {
+  console.log("Interaction started");
+
+  if (interaction.isCommand()) {
+    const command = commandCollection.get(interaction.commandName);
+    if (!command) {
+      console.error(`No command found for ${interaction.commandName}`);
+      return;
+    }
+    await command.execute(interaction);
+    return; // Ensure no other logic runs for slash commands
+  }
+
   if (!interaction.isButton()) return;
+
+  console.log("Got custom id.");
+
   const customId = interaction.customId;
   console.log(customId);
 
@@ -71,14 +92,16 @@ discordClient.on("interactionCreate", async (interaction) => {
   let start_date = "";
   let end_date = "";
   let link = "";
-  (async () => {
-    const { rows: [event] } = await dbClient.query(`SELECT title, start_date, end_date, link FROM events WHERE id = ${customId}`);
-    console.log(event);
-    if (event) {
-      ({ title, start_date, end_date, link } = event); 
-      console.log(title, start_date, end_date, link);
-    }
-  })();
+
+  // Defer reply immediately
+  await interaction.deferReply();
+
+  const { rows: [event] } = await dbClient.query(`SELECT title, start_date, end_date, link FROM events WHERE id = ${customId}`);
+  console.log(event);
+  if (event) {
+    ({ title, start_date, end_date, link } = event); 
+    console.log(title, start_date, end_date, link);
+  }
 
   try {
     const guild = interaction.guild;
@@ -87,7 +110,7 @@ discordClient.on("interactionCreate", async (interaction) => {
       return;
     }
 
-    await interaction.deferReply();
+    await interaction.deferReply(); 
 
     const result = await createChannelAndEvent(guild, title, start_date, end_date, link);
 

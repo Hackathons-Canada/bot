@@ -23,5 +23,5 @@ export async function deployCommands({ guildId }: DeployCommandsProps) {
   } 
   catch (error) {
     console.error(error);
-  }
+  } 
 }

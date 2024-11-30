@@ -1,5 +1,5 @@
 import { CommandInteraction, SlashCommandBuilder, TextChannel, Guild } from "discord.js";
-''
+
 export const data = new SlashCommandBuilder()
   .setName("add")
   .setDescription("Creates a channel and sends a message in it.")
@@ -42,7 +42,9 @@ export async function createChannelAndEvent(
   end_date: string,
   link: string
 ): Promise<string> {
-  const channelName = `${title}-${start_date}`.toLowerCase().replace(/\s+/g, "-");
+  const channelName = `${title}-${start_date}`
+    .toLowerCase().replace(/\s+/g, "-")
+    .replace(/-\d{2}:\d{2}:\d{2}.*/i, "");;
   const startDate = new Date(start_date);
   const endDate = new Date(end_date);
   startDate.setHours(0, 0, 0, 0); 
